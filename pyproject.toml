@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "worklog-backend"
+version = "0.1.0"
+description = "Workload FastAPI backend w/ MongoDB for k8s CICD course"
+authors = ["Sungmin Lee <sungmin.cs@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.111.0"
+pydantic-settings = "^2.2.1"
+motor = "^3.4.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4.4"
+black = "^24.4.2"
+mypy = "^1.10.0"
+pytest = "^8.2.0"
+coverage = "^7.5.1"
+mongomock-motor = "^0.0.29"
+pytest-httpx = "^0.30.0"
+pytest-asyncio = "^0.23.6"
+setuptools = "^69.5.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

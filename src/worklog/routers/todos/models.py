@@ -1,0 +1,17 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class Todo(BaseModel):
+    title: str
+    completed: bool = False
+
+
+class TodoId(BaseModel):
+    id: str
+
+
+class TodoRecord(TodoId, Todo):
+    created_date: datetime
+    updated_date: datetime
