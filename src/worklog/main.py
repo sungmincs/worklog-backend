@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from worklog.routers.health import health
+from worklog.routers.notes import notes
 from worklog.routers.todos import todos
 from worklog.settings import settings
 
@@ -23,6 +24,11 @@ app = FastAPI(
 app.include_router(
     health.router,
     prefix="/health",
+)
+app.include_router(
+    notes.router,
+    prefix="/api/v1/notes",
+    tags=["notes"],
 )
 
 app.include_router(
