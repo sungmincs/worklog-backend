@@ -1,7 +1,7 @@
 FROM python:3.12.3-slim-bookworm as pip_requirements
 
 COPY ./pyproject.toml ./poetry.lock /
-RUN pip install poetry \
+RUN pip install poetry==1.8.0 \
     && poetry export -f requirements.txt --output requirements.txt --without-hashes --without=dev
 
 FROM python:3.12.3-slim-bookworm
