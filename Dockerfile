@@ -1,7 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS uv_builder
 
 COPY ./pyproject.toml ./uv.lock /
-RUN uv export --no-dev --no-hashes -o requirements.txt
+RUN uv export --no-dev --no-hashes --no-emit-project -o requirements.txt
 
 FROM python:3.12.3-slim-bookworm
 
