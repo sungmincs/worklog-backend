@@ -11,6 +11,10 @@ def sendSlackMessage(statusMessage, commitMessage, shortSHA, fullSHA) {
 
 pipeline {
     agent any
+    environment {
+        DOCKER_REPOSITORY = 'sysnet4admin/worklog-backend'
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+    }
     stages {
         stage('Init Variables') {
             steps {
@@ -23,26 +27,37 @@ pipeline {
             }
         }
         stage('Run Test') {
+            agent {
+                docker {
+                    image 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
+                }
+            }
             steps {
                 script {
                     echo "let's run a test for ${shortSHA} in ${branch}"
                     echo "running test for ${fullSHA}"
-                    sh '''
-                        curl -LsSf https://astral.sh/uv/install.sh | sh
-                        export PATH="$HOME/.local/bin:$PATH"
-                        uv sync --extra dev
-                        TESTING=true uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v
-                        uv run coverage report
-                    '''
+                    sh 'uv sync'
+                    sh 'TESTING=true uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v'
+                    sh 'uv run coverage report'
                 }
             }
         }
-        stage('Build Image') {
+        stage('Build and Push Image') {
             steps {
-                echo "Let's build the image for ${shortSHA} in ${branch}"
-                echo "The change commit message to build is '${commitMessage}'"
-                echo 'build successful and published image with the following tags:'
-                echo "Tags: ${shortSHA}, ${fullSHA}"
+                script {
+                    echo "Let's build the image for ${shortSHA} in ${branch}"
+                    echo "The change commit message to build is '${commitMessage}'"
+
+                    def app = docker.build("${DOCKER_REPOSITORY}:${shortSHA}")
+
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
+                        app.push("${shortSHA}")
+                        app.push("${fullSHA}")
+                    }
+
+                    echo 'build successful and published image with the following tags:'
+                    echo "Tags: ${shortSHA}, ${fullSHA}"
+                }
             }
         }
     }
