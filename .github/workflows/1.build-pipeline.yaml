@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "let's run a test for ${{ steps.vars.outputs.short_sha }} in ${{ steps.vars.output.branch }}"
           echo "running test for ${{ steps.vars.outputs.full_sha }}"
-          uv sync
+          uv sync --extra dev
           export TESTING=true
           uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v
           uv run coverage report
