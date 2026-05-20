@@ -27,10 +27,13 @@ pipeline {
                 script {
                     echo "let's run a test for ${shortSHA} in ${branch}"
                     echo "running test for ${fullSHA}"
-                    sh 'pip install uv'
-                    sh 'uv sync --extra dev'
-                    sh 'TESTING=true uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v'
-                    sh 'uv run coverage report'
+                    sh '''
+                        curl -LsSf https://astral.sh/uv/install.sh | sh
+                        export PATH="$HOME/.local/bin:$PATH"
+                        uv sync --extra dev
+                        TESTING=true uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v
+                        uv run coverage report
+                    '''
                 }
             }
         }
