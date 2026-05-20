@@ -1,14 +1,13 @@
-FROM python:3.12.3-slim-bookworm as pip_requirements
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS uv_builder
 
-COPY ./pyproject.toml ./poetry.lock /
-RUN pip install poetry==1.8.0 \
-    && poetry export -f requirements.txt --output requirements.txt --without-hashes --without=dev
+COPY ./pyproject.toml ./uv.lock /
+RUN uv export --no-dev --no-hashes -o requirements.txt
 
 FROM python:3.12.3-slim-bookworm
 
 WORKDIR /app/worklog
 COPY ./src/worklog /app/worklog
-COPY --from=pip_requirements /requirements.txt /tmp/requirements.txt
+COPY --from=uv_builder /requirements.txt /tmp/requirements.txt
 
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
