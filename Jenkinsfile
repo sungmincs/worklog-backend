@@ -27,18 +27,17 @@ pipeline {
             }
         }
         stage('Run Test') {
-            agent {
-                docker {
-                    image 'ghcr.io/astral-sh/uv:python3.12-bookworm-slim'
-                }
-            }
             steps {
                 script {
                     echo "let's run a test for ${shortSHA} in ${branch}"
                     echo "running test for ${fullSHA}"
-                    sh 'uv sync'
-                    sh 'TESTING=true uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v'
-                    sh 'uv run coverage report'
+                    sh '''
+                        curl -LsSf https://astral.sh/uv/install.sh | sh
+                        export PATH="$HOME/.local/bin:$PATH"
+                        uv sync --extra dev
+                        TESTING=true uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v
+                        uv run coverage report
+                    '''
                 }
             }
         }
