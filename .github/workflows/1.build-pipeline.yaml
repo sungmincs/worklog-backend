@@ -1,4 +1,4 @@
-name: worklog backend pipeline
+name: worklog backend pipeline (marketplace)
 
 on:
   push:
@@ -31,7 +31,6 @@ jobs:
           branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')
           commit_message=$(git log -1 --format="*%s* by _%an_")
 
-          # Export slack vars to outputs
           echo "full_sha=${full_sha}" >> $GITHUB_OUTPUT
           echo "short_sha=${short_sha}" >> $GITHUB_OUTPUT
           echo "branch=${branch}" >> $GITHUB_OUTPUT
@@ -41,29 +40,38 @@ jobs:
           echo "Sending a 'start' notification to Slack for build ${{ steps.vars.outputs.short_sha }}"
       - name: Run test
         run: |
-          echo "let's run a test for ${{ steps.vars.outputs.short_sha }} in ${{ steps.vars.output.branch }}"
           echo "running test for ${{ steps.vars.outputs.full_sha }}"
           uv sync --extra dev
           export TESTING=true
           uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v
           uv run coverage report
+
   build:
     runs-on: ubuntu-latest
     needs: [init-and-test]
     steps:
       - uses: actions/checkout@v4
-      - name: Build image
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.full_sha }}
+            ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.short_sha }}
+
+      - name: Print result
         run: |
-          echo "Let's build the image for ${{ needs.init-and-test.outputs.full_sha }}"
-          echo "The change commit message to build is '${{ needs.init-and-test.outputs.commit_message }}'"
-          echo ${{ env.DOCKERHUB_TOKEN }} | docker login --username ${{ env.DOCKERHUB_USERNAME }} --password-stdin
-          docker build . \
-            -t ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.full_sha }} \
-            -t ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.short_sha }}
-          docker push ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.short_sha }}
-          docker push ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.full_sha }}
           echo "build successful and published image with the following tags:"
           echo "Tags: ${{ needs.init-and-test.outputs.short_sha }}, ${{ needs.init-and-test.outputs.full_sha }}"
+
   notify-success-result:
     if: ${{ success() }}
     runs-on: ubuntu-latest
