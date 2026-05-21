@@ -84,12 +84,15 @@ pipeline {
         stage('Sync Argo CD') {
             steps {
                 sh """
-                    argocd login ${ARGOCD_SERVER} \
+                    curl -sSL -o /tmp/argocd https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-linux-arm64
+                    chmod +x /tmp/argocd
+                    /tmp/argocd login ${ARGOCD_SERVER} \
                         --username admin \
                         --password ${ARGOCD_ADMIN_PASSWORD} \
-                        --insecure
-                    argocd app sync ${ARGOCD_APP_NAME}
-                    argocd app wait ${ARGOCD_APP_NAME} --health --timeout 120
+                        --insecure \
+                        --plaintext
+                    /tmp/argocd app sync ${ARGOCD_APP_NAME}
+                    /tmp/argocd app wait ${ARGOCD_APP_NAME} --health --timeout 120
                 """
                 echo "Argo CD sync completed successfully"
             }
