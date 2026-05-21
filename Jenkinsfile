@@ -52,6 +52,7 @@ pipeline {
 
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
                         sh """
+                            docker run --privileged --rm tonistiigi/binfmt --install all 2>/dev/null || true
                             docker buildx create --use --name multi-platform-builder 2>/dev/null || true
                             docker buildx build \
                                 --platform linux/amd64,linux/arm64 \
