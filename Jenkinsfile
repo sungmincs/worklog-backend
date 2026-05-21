@@ -14,6 +14,10 @@ pipeline {
     environment {
         DOCKER_REPOSITORY = 'sysnet4admin/worklog-backend'
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        ARGOCD_SERVER = 'argocd-server.argocd.svc.cluster.local'
+        ARGOCD_APP_NAME = 'worklog-backend'
+        ARGOCD_ADMIN_PASSWORD = credentials('argocd-admin-password')
+        GITHUB_CREDENTIALS = credentials('github-token')
     }
     stages {
         stage('Init Variables') {
@@ -45,18 +49,49 @@ pipeline {
             steps {
                 script {
                     echo "Let's build the image for ${shortSHA} in ${branch}"
-                    echo "The change commit message to build is '${commitMessage}'"
-
-                    def app = docker.build("${DOCKER_REPOSITORY}:${shortSHA}")
 
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
-                        app.push("${shortSHA}")
-                        app.push("${fullSHA}")
+                        sh """
+                            docker buildx create --use --name multi-platform-builder 2>/dev/null || true
+                            docker buildx build \
+                                --platform linux/amd64,linux/arm64 \
+                                -t ${DOCKER_REPOSITORY}:${shortSHA} \
+                                -t ${DOCKER_REPOSITORY}:${fullSHA} \
+                                --push .
+                        """
                     }
 
                     echo 'build successful and published image with the following tags:'
                     echo "Tags: ${shortSHA}, ${fullSHA}"
                 }
+            }
+        }
+        stage('Update Manifest') {
+            steps {
+                sh """
+                    cd deploy_manifest
+                    sed -i "s|image: .*worklog-backend:.*|image: ${DOCKER_REPOSITORY}:${shortSHA}|" worklog-backend.yaml
+                    sed -i "s|value: .* # IMAGE_TAG|value: ${shortSHA} # IMAGE_TAG|" worklog-backend.yaml
+                    git config user.name "jenkins"
+                    git config user.email "jenkins@myk8s.local"
+                    git remote set-url origin https://${GITHUB_CREDENTIALS_USR}:${GITHUB_CREDENTIALS_PSW}@github.com/sysnet4admin/worklog-backend.git
+                    git add .
+                    git commit -m "deploy: update image tag to ${shortSHA}"
+                    git push origin main
+                """
+            }
+        }
+        stage('Sync Argo CD') {
+            steps {
+                sh """
+                    argocd login ${ARGOCD_SERVER} \
+                        --username admin \
+                        --password ${ARGOCD_ADMIN_PASSWORD} \
+                        --insecure
+                    argocd app sync ${ARGOCD_APP_NAME}
+                    argocd app wait ${ARGOCD_APP_NAME} --health --timeout 120
+                """
+                echo "Argo CD sync completed successfully"
             }
         }
     }
