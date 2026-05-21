@@ -21,6 +21,8 @@ spec:
       labels:
         app: worklog-backend
     spec:
+      imagePullSecrets:
+      - name: dockerhub-creds
       containers:
       - name: worklog-backend
         image: sysnet4admin/worklog-backend:68be3459
