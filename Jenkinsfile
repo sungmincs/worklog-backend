@@ -70,13 +70,12 @@ pipeline {
         stage('Update Manifest') {
             steps {
                 sh """
-                    cd deploy_manifest
-                    sed -i "s|image: .*worklog-backend:.*|image: ${DOCKER_REPOSITORY}:${shortSHA}|" worklog-backend.yaml
-                    sed -i "s|value: .* # IMAGE_TAG|value: ${shortSHA} # IMAGE_TAG|" worklog-backend.yaml
+                    sed -i "s|image: .*worklog-backend:.*|image: ${DOCKER_REPOSITORY}:${shortSHA}|" deploy_manifest/worklog-backend.yaml
+                    sed -i "s|value: .* # IMAGE_TAG|value: ${shortSHA} # IMAGE_TAG|" deploy_manifest/worklog-backend.yaml
                     git config user.name "jenkins"
                     git config user.email "jenkins@myk8s.local"
                     git remote set-url origin https://${GITHUB_CREDENTIALS_USR}:${GITHUB_CREDENTIALS_PSW}@github.com/sysnet4admin/worklog-backend.git
-                    git add .
+                    git add deploy_manifest/
                     git commit -m "deploy: update image tag to ${shortSHA}"
                     git push origin main
                 """
