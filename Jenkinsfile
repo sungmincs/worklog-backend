@@ -77,7 +77,7 @@ pipeline {
                     git remote set-url origin https://${GITHUB_CREDENTIALS_USR}:${GITHUB_CREDENTIALS_PSW}@github.com/sysnet4admin/worklog-backend.git
                     git add deploy_manifest/
                     git commit -m "deploy: update image tag to ${shortSHA}"
-                    git push origin main
+                    git push origin HEAD:main
                 """
             }
         }
