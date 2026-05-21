@@ -88,7 +88,7 @@ pipeline {
                     chmod +x /tmp/argocd
                     /tmp/argocd login ${ARGOCD_SERVER} \
                         --username admin \
-                        --password ${ARGOCD_ADMIN_PASSWORD} \
+                        --password ${ARGOCD_ADMIN_PASSWORD_PSW} \
                         --insecure \
                         --plaintext
                     /tmp/argocd app sync ${ARGOCD_APP_NAME}
