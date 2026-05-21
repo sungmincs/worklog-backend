@@ -1,4 +1,4 @@
-name: worklog backend pipeline
+name: worklog backend pipeline (Argo CD)
 
 on:
   push:
@@ -33,7 +33,6 @@ jobs:
           branch=$(echo ${GITHUB_REF#refs/heads/} | tr '/' '-')
           commit_message=$(git log -1 --format="*%s* by _%an_")
 
-          # Export slack vars to outputs
           echo "full_sha=${full_sha}" >> $GITHUB_OUTPUT
           echo "short_sha=${short_sha}" >> $GITHUB_OUTPUT
           echo "branch=${branch}" >> $GITHUB_OUTPUT
@@ -43,12 +42,12 @@ jobs:
           echo "Sending a 'start' notification to Slack for build ${{ steps.vars.outputs.short_sha }}"
       - name: Run test
         run: |
-          echo "let's run a test for ${{ steps.vars.outputs.short_sha }} in ${{ steps.vars.output.branch }}"
           echo "running test for ${{ steps.vars.outputs.full_sha }}"
           uv sync --extra dev
           export TESTING=true
           uv run coverage run --source ./src/worklog -m pytest --disable-warnings -v
           uv run coverage report
+
   build:
     runs-on: ubuntu-latest
     needs: [init-and-test]
@@ -59,19 +58,36 @@ jobs:
       - name: Build image
         run: |
           echo "Let's build the image for ${{ needs.init-and-test.outputs.full_sha }}"
-          echo "The change commit message to build is '${{ needs.init-and-test.outputs.commit_message }}'"
           echo ${{ env.DOCKERHUB_TOKEN }} | docker login --username ${{ env.DOCKERHUB_USERNAME }} --password-stdin
           docker buildx build . \
             --platform linux/amd64,linux/arm64 \
             -t ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.full_sha }} \
             -t ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.short_sha }} \
             --push
-          echo "build successful and published image with the following tags:"
           echo "Tags: ${{ needs.init-and-test.outputs.short_sha }}, ${{ needs.init-and-test.outputs.full_sha }}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [init-and-test, build]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update manifest and push
+        run: |
+          cd deploy_manifest
+          sed -i "s|image: .*worklog-backend:.*|image: ${{ env.DOCKER_REPOSITORY }}:${{ needs.init-and-test.outputs.short_sha }}|" worklog-backend.yaml
+          sed -i "s|value: .* # IMAGE_TAG|value: ${{ needs.init-and-test.outputs.short_sha }} # IMAGE_TAG|" worklog-backend.yaml
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "deploy: update image tag to ${{ needs.init-and-test.outputs.short_sha }}"
+          git push origin main
+
   notify-success-result:
     if: ${{ success() }}
     runs-on: ubuntu-latest
-    needs: [init-and-test, build]
+    needs: [init-and-test, build, deploy]
     steps:
       - name: Slack Notification Success
         run: |
@@ -82,7 +98,7 @@ jobs:
   notify-failure-result:
     if: ${{ failure() }}
     runs-on: ubuntu-latest
-    needs: [init-and-test, build]
+    needs: [init-and-test, build, deploy]
     steps:
       - name: Slack Notification Failure
         run: |
