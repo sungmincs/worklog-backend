@@ -1,3 +1,4 @@
+import os  # ch9.3 F401 위반 주입
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 from worklog.settings import settings
